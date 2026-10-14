@@ -1,0 +1,122 @@
+# Attack Observatory — heralding configuration.
+# Only the protocols owned by this honeypot are enabled (contract §7):
+# ftp 21, smtp 25, pop3 110, imap 143. ssh/telnet/http are covered by cowrie and
+# snare/tanner; everything else stays off to save RAM and avoid port clashes.
+# Any username/password combination is accepted; attempts land in the CSV auth log.
+
+public_ip_as_destination_ip: false
+bind_host: 0.0.0.0
+
+activity_logging:
+  file:
+    enabled: true
+    # Session detail logs off — only the auth CSV is shipped to the backend.
+    session_csv_log_file: ""
+    session_json_log_file: ""
+    authentication_log_file: /var/log/heralding/heralding_auth.csv
+  syslog:
+    enabled: false
+  hpfeeds:
+    enabled: false
+    session_channel: heralding.session
+    auth_channel: heralding.auth
+    host:
+    port: 20000
+    ident:
+    secret:
+  curiosum:
+    enabled: false
+    port: 23400
+
+# Offline hash cracking disabled (no wordlist shipped, 1 vCPU budget).
+hash_cracker:
+  enabled: false
+
+capabilities:
+  ftp:
+    enabled: true
+    port: 21
+    timeout: 30
+    protocol_specific_data:
+      max_attempts: 3
+      banner: "Microsoft FTP Server"
+      syst_type: "Windows-NT"
+
+  smtp:
+    enabled: true
+    port: 25
+    timeout: 30
+    protocol_specific_data:
+      banner: "Microsoft ESMTP MAIL service ready"
+      fqdn: ""
+
+  pop3:
+    enabled: true
+    port: 110
+    timeout: 30
+    protocol_specific_data:
+      max_attempts: 3
+      banner: "+OK POP3 server ready"
+
+  imap:
+    enabled: true
+    port: 143
+    timeout: 30
+    protocol_specific_data:
+      max_attempts: 3
+      banner: "* OK IMAP4rev1 Server Ready"
+
+  telnet:
+    enabled: false
+    port: 23
+    timeout: 30
+
+  ssh:
+    enabled: false
+    port: 22
+    timeout: 30
+
+  http:
+    enabled: false
+    port: 80
+    timeout: 30
+
+  https:
+    enabled: false
+    port: 443
+    timeout: 30
+
+  pop3s:
+    enabled: false
+    port: 995
+    timeout: 30
+
+  imaps:
+    enabled: false
+    port: 993
+    timeout: 30
+
+  smtps:
+    enabled: false
+    port: 465
+    timeout: 30
+
+  postgresql:
+    enabled: false
+    port: 5432
+    timeout: 30
+
+  mysql:
+    enabled: false
+    port: 3306
+    timeout: 30
+
+  vnc:
+    enabled: false
+    port: 5900
+    timeout: 30
+
+  socks5:
+    enabled: false
+    port: 1080
+    timeout: 30

@@ -1,0 +1,38 @@
+# secrets / deployment config
+.env
+
+# node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+
+# duckdb database + checkpoints + WAL
+*.duckdb
+*.duckdb.wal
+*.duckdb*
+
+# runtime data
+data/
+backups/
+
+# logs and editor noise
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# deploy artifacts and reference screenshots
+_deploy.tar.gz
+*.webp
+shardlure/msedge_*.png
+shardlure_map_page/Globe.png
+.omp/
+login.json
+land110.geojson
+sshstats30.json
+sshstats.json

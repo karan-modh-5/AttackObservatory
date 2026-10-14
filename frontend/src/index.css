@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-base font-sans text-ink antialiased;
+  }
+
+  ::selection {
+    @apply bg-lime/30 text-white;
+  }
+}
+
+@layer components {
+  /* Flat ShardLure panel: #131519, 1px #24272c edge, 6px radius. */
+  .panel {
+    @apply rounded border border-edge bg-panel;
+  }
+
+  /* 10px uppercase panel header, 0.6px tracking, label gray. */
+  .panel-title {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[0.6px] text-dim;
+  }
+}
+
+@layer utilities {
+  /* Very low contrast dotted texture behind the page. */
+  .bg-starfield {
+    background-image: radial-gradient(rgba(247, 247, 248, 0.05) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(247, 247, 248, 0.14) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(247, 247, 248, 0.14);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(209, 254, 23, 0.35);
+}

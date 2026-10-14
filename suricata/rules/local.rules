@@ -1,0 +1,41 @@
+# Attack Observatory — hand-written baseline rules (sid 1000001+).
+# Always loaded (rule-files: local.rules); suricata.rules is appended by
+# suricata-update when the box is online, with local.rules as offline fallback.
+
+# --- reconnaissance / scanning ---
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL TCP SYN port scan detected"; flags:S; flow:stateless; detection_filter:track by_src, count 30, seconds 60; classtype:attempted-recon; sid:1000001; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL TCP NULL scan detected"; flags:0; flow:stateless; detection_filter:track by_src, count 15, seconds 60; classtype:attempted-recon; sid:1000002; rev:1;)
+
+# --- web scanner user agents ---
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL Nmap Scripting Engine HTTP scan"; flow:to_server,established; http.user_agent; content:"Nmap Scripting Engine"; nocase; classtype:attempted-recon; sid:1000003; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL Masscan HTTP probe"; flow:to_server,established; http.user_agent; content:"masscan"; nocase; classtype:attempted-recon; sid:1000004; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL zgrab HTTP scan"; flow:to_server,established; http.user_agent; content:"zgrab"; nocase; classtype:attempted-recon; sid:1000005; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL sqlmap or nikto scanner user agent"; flow:to_server,established; http.user_agent; pcre:"/\b(sqlmap|nikto)\b/i"; classtype:web-application-attack; sid:1000006; rev:1;)
+
+# --- brute force ---
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET [22,2222] (msg:"LOCAL SSH brute force connection burst"; flags:S; flow:stateless; detection_filter:track by_src, count 5, seconds 60; classtype:attempted-admin; sid:1000007; rev:1;)
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET 21 (msg:"LOCAL FTP cleartext credentials (PASS command)"; flow:to_server,established; content:"PASS "; nocase; startswith; classtype:attempted-user; sid:1000008; rev:1;)
+
+# --- web payload attacks ---
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL LFI attempt for /etc/passwd"; flow:to_server,established; http.uri; content:"/etc/passwd"; nocase; classtype:attempted-recon; sid:1000009; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL SQL injection UNION SELECT in URI"; flow:to_server,established; http.uri; pcre:"/union[\x20+]+select/i"; classtype:web-application-attack; sid:1000010; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL directory traversal in URI"; flow:to_server,established; http.uri; content:"../.."; classtype:attempted-recon; sid:1000011; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL PHP wrapper (php://filter|input|data) in URI"; flow:to_server,established; http.uri; pcre:"/php:\/\/(filter|input|data)/i"; classtype:web-application-attack; sid:1000012; rev:1;)
+
+# --- IoT malware ---
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET [23,2323] (msg:"LOCAL Mirai-style busybox probe over telnet"; flow:to_server,established; content:"busybox"; nocase; classtype:trojan-activity; sid:1000013; rev:1;)
+
+alert http $EXTERNAL_NET any -> $HOME_NET $HTTP_PORTS (msg:"LOCAL Mirai-style malware binary fetch"; flow:to_server,established; http.uri; pcre:"/\.(mips|mpsl|sh4|arm|arm7|sparc|ppc|x86)(\x3f|$)/"; classtype:trojan-activity; sid:1000014; rev:1;)

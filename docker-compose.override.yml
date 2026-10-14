@@ -1,0 +1,8 @@
+# Production port cutover: real sshd moved to 22022, cowrie owns 22 (SSH) and
+# 23 (Telnet). The !override tag replaces the base compose ports list instead
+# of merging with it (requires docker compose v2.24+; VPS ships 2.40).
+services:
+  cowrie:
+    ports: !override
+      - "22:2222"
+      - "23:2223"

@@ -1,0 +1,14 @@
+{
+  "/index.html": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/login": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/signin": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/auth": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/admin": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/vpn": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/webmail": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/portal": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/owa": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/selfservice": {"hash": "index.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}, {"Cache-Control": "no-store"}]},
+  "/status_404": {"hash": "404.html", "headers": [{"Content-Type": "text/html; charset=utf-8"}]}
+}

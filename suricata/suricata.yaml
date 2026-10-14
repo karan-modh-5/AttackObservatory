@@ -1,0 +1,160 @@
+# Attack Observatory — minimal Suricata 7 configuration.
+# Host-network af-packet capture on eth0, tuned for a 256MB memory cap on a
+# 1 vCPU / 512MB VPS: small memcaps/hash sizes, single detect thread, eve.json
+# with alerts only (consumed by fluent-bit -> api).
+# Deployed read-only at /etc/suricata/suricata.yaml by docker-compose.
+
+%YAML 1.1
+---
+
+vars:
+  address-groups:
+    # <HOME_NET_PLACEHOLDER> is replaced at container start by entrypoint.sh
+    # with this host's global IPv4 addresses (public VPS deployment).
+    HOME_NET: "<HOME_NET_PLACEHOLDER>"
+    EXTERNAL_NET: "!$HOME_NET"
+    HTTP_SERVERS: "$HOME_NET"
+    SMTP_SERVERS: "$HOME_NET"
+    SQL_SERVERS: "$HOME_NET"
+    DNS_SERVERS: "$HOME_NET"
+    TELNET_SERVERS: "$HOME_NET"
+    AIM_SERVERS: "$EXTERNAL_NET"
+    DNP3_SERVER: "$HOME_NET"
+    DNP3_CLIENT: "$EXTERNAL_NET"
+    MODBUS_SERVER: "$HOME_NET"
+    MODBUS_CLIENT: "$EXTERNAL_NET"
+    ENIP_SERVER: "$HOME_NET"
+    ENIP_CLIENT: "$EXTERNAL_NET"
+
+  port-groups:
+    HTTP_PORTS: "80,8080"
+    SHELLCODE_PORTS: "!80"
+    ORACLE_PORTS: 1521
+    SSH_PORTS: 22
+    DNP3_PORTS: 20000
+    MODBUS_PORTS: 502
+    FILE_DATA_PORTS: "[$HTTP_PORTS,110,143]"
+    FTP_PORTS: 21
+    RDP_PORTS: 3389
+    MQTT_PORTS: 1883
+
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - suricata.rules
+  - local.rules
+
+classification-file: /etc/suricata/classification.config
+reference-config-file: /etc/suricata/reference.config
+default-log-dir: /var/log/suricata
+
+# Single capture + detect thread.
+runmode: workers
+
+detect-engine:
+  - profile: low
+  - sgh-mpm-context: auto
+  - inspection-recursion-limit: 3000
+  - rule-reload: false
+
+af-packet:
+  - interface: eth0
+    threads: 1
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+    block-size: 1024
+    buffer-size: 64
+    ring-size: 256
+    promisc: no
+    checksum-checks: auto
+
+app-layer:
+  protocols:
+    tls:
+      enabled: yes
+    ssh:
+      enabled: yes
+    ftp:
+      enabled: yes
+    http:
+      enabled: yes
+      libhtp:
+        default-config:
+          personality: IDS
+          request-body-limit: 100kb
+          response-body-limit: 100kb
+          request-body-minimal-inspect-size: 32kb
+          request-body-inspect-window: 4kb
+          response-body-minimal-inspect-size: 40kb
+          response-body-inspect-window: 16kb
+          response-body-decompress-layer-limit: 2
+    # Parsers required by ET SCADA rule subsets (modbus/dnp3/enip); without
+    # these the rules fail signature parse at engine start.
+    modbus:
+      enabled: yes
+      detection-ports:
+        dp: 502
+    dnp3:
+      enabled: yes
+      detection-ports:
+        dp: 20000
+    enip:
+      enabled: yes
+      detection-ports:
+        dp: 44818
+
+# ---- memory tuning (256MB container cap) ----
+flow:
+  memcap: 32mb
+  hash-size: 4096
+  prealloc: 1000
+  emergency-recovery: 30
+
+defrag:
+  memcap: 16mb
+  hash-size: 4096
+  trackers: 8192
+  max-frags: 8192
+  prealloc: yes
+  timeout: 60
+
+host:
+  hash-size: 4096
+  prealloc: 1000
+  memcap: 16mb
+
+stream:
+  memcap: 32mb
+  checksum-validation: yes
+  inline: auto
+  reassembly:
+    memcap: 32mb
+    depth: 1mb
+    toserver-chunk-size: 2560
+    toclient-chunk-size: 2560
+    randomize-chunk-size: no
+
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      community-id: false
+      community-id-seq: false
+      types:
+        - alert
+  - stats:
+      enabled: no
+  - fast:
+      enabled: no
+
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+    - file:
+        enabled: no
+        filename: suricata.log

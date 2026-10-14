@@ -1,0 +1,165 @@
+name: observatory
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "8888:80"
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      TZ: ${TZ:-UTC}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    mem_limit: 32m
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      OBS_SECRET_KEY: "${OBS_SECRET_KEY:?OBS_SECRET_KEY is required - see .env.example}"
+      OBS_ADMIN_USER: ${OBS_ADMIN_USER:-admin}
+      OBS_ADMIN_PASSWORD: "${OBS_ADMIN_PASSWORD:?OBS_ADMIN_PASSWORD is required - see .env.example}"
+      OBS_INGEST_API_KEY: "${OBS_INGEST_API_KEY:?OBS_INGEST_API_KEY is required - see .env.example}"
+      OBS_TOKEN_EXPIRE_MINUTES: ${OBS_TOKEN_EXPIRE_MINUTES:-1440}
+      OBS_DB_PATH: ${OBS_DB_PATH:-/data/observatory.duckdb}
+      OBS_DB_MEMORY_LIMIT: ${OBS_DB_MEMORY_LIMIT:-128MB}
+      OBS_RETENTION_DAYS: ${OBS_RETENTION_DAYS:-90}
+      OBS_QUEUE_MAXSIZE: ${OBS_QUEUE_MAXSIZE:-20000}
+      OBS_MAXMIND_LICENSE_KEY: ${OBS_MAXMIND_LICENSE_KEY:-}
+      OBS_GEOIP_DIR: ${OBS_GEOIP_DIR:-/data/geoip}
+      OBS_LOG_LEVEL: ${OBS_LOG_LEVEL:-INFO}
+      OBS_CORS_ORIGINS: ${OBS_CORS_ORIGINS:-http://localhost:5173}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - duckdb-data:/data
+      - backups:/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    mem_limit: 256m
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      OBS_INGEST_API_KEY: "${OBS_INGEST_API_KEY:?OBS_INGEST_API_KEY is required - see .env.example}"
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - cowrie-logs:/var/log/honeypot/cowrie:ro
+      - suricata-logs:/var/log/honeypot/suricata:ro
+      - heralding-logs:/var/log/honeypot/heralding:ro
+      - hp-logs:/var/log/honeypot
+      - fluentbit-db:/flb-db
+    restart: unless-stopped
+    mem_limit: 48m
+
+  cowrie:
+    image: cowrie/cowrie:latest
+    ports:
+      - "2222:2222"
+      - "2323:2223"
+    environment:
+      COWRIE_HOSTNAME: ${COWRIE_HOSTNAME:-svc-01}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./cowrie/cowrie.cfg:/cowrie/cowrie-git/etc/cowrie.cfg:ro
+      - ./cowrie/userdb.txt:/cowrie/cowrie-git/etc/userdb.txt:ro
+      - cowrie-logs:/cowrie/cowrie-git/var/log/cowrie
+    restart: unless-stopped
+    mem_limit: 128m
+
+  snare:
+    build:
+      context: ./snare
+      dockerfile: Dockerfile
+    ports:
+      - "80:8080"
+    environment:
+      SNARE_CLONE_SITE: ${SNARE_CLONE_SITE:-https://example.com}
+      SNARE_PAGE_NAME: ${SNARE_PAGE_NAME:-portal}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - snare-pages:/opt/snare/pages
+      - hp-logs:/var/log/honeypot
+    depends_on:
+      tanner:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 96m
+
+  tanner:
+    build:
+      context: ./tanner
+      dockerfile: Dockerfile
+    expose:
+      - "8090"
+    volumes:
+      - hp-logs:/var/log/honeypot
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/version"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    mem_limit: 96m
+
+  heralding:
+    build:
+      context: ./heralding
+      dockerfile: Dockerfile
+    ports:
+      - "21:21"
+      - "25:25"
+      - "110:110"
+      - "143:143"
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - heralding-logs:/var/log/heralding
+    restart: unless-stopped
+    mem_limit: 64m
+
+  suricata:
+    image: jasonish/suricata:latest
+    network_mode: host
+    cap_add:
+      - NET_RAW
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./suricata/entrypoint.sh:/entrypoint.sh:ro
+      - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+      - ./suricata/rules/local.rules:/etc/suricata/rules/local.rules:ro
+      - suricata-logs:/var/log/suricata
+    restart: unless-stopped
+    mem_limit: 192m
+
+volumes:
+  duckdb-data:
+  backups:
+  cowrie-logs:
+  hp-logs:
+  heralding-logs:
+  suricata-logs:
+  fluentbit-db:
+  snare-pages:
