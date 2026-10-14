@@ -61,6 +61,16 @@ async def lifespan(app: FastAPI):
     db.connect()
     db.init_schema()
 
+    # One-time cleanup of history: suricata alerts about the sensor's own
+    # outbound traffic are noise (ingestion drops new ones via OBS_SENSOR_IPS).
+    sensor_list = [ip.strip() for ip in settings.sensor_ips.split(",") if ip.strip()]
+    if sensor_list:
+        placeholders = ", ".join("?" for _ in sensor_list)
+        await db.execute_write(
+            f"DELETE FROM events WHERE honeypot = 'suricata' AND source_ip IN ({placeholders})",
+            sensor_list,
+        )
+
     geoip = GeoEnricher(settings.geoip_dir, settings.maxmind_license_key, enabled=settings.geoip_enabled)
     await run_geoip_refresh(db, geoip)
 
@@ -70,7 +80,7 @@ async def lifespan(app: FastAPI):
         logger.error("event_kind backfill failed", exc_info=True)
 
     hub = ConnectionHub()
-    pipeline = IngestPipeline(db, geoip, ClassificationEngine(), hub, settings.queue_maxsize)
+    pipeline = IngestPipeline(db, geoip, ClassificationEngine(), hub, settings.queue_maxsize, sensor_ips=settings.sensor_ips)
     await pipeline.start()
 
     scheduler = build_scheduler(db, geoip, settings)

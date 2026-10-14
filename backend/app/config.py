@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     db_memory_limit: str = Field(default="128MB", validation_alias="OBS_DB_MEMORY_LIMIT")
     retention_days: int = Field(default=90, validation_alias="OBS_RETENTION_DAYS")
     queue_maxsize: int = Field(default=20000, validation_alias="OBS_QUEUE_MAXSIZE")
+    sensor_ips: str = Field(default="", validation_alias="OBS_SENSOR_IPS")
     maxmind_license_key: str = Field(default="", validation_alias="OBS_MAXMIND_LICENSE_KEY")
     geoip_dir: str = Field(default="/data/geoip", validation_alias="OBS_GEOIP_DIR")
     geoip_enabled: bool = Field(default=True, validation_alias="OBS_GEOIP_ENABLED")

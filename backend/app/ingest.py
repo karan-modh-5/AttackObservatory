@@ -49,11 +49,17 @@ class IngestPipeline:
         engine: ClassificationEngine,
         hub: ConnectionHub,
         queue_maxsize: int,
+        sensor_ips: str = "",
     ) -> None:
         self.db = db
         self.geoip = geoip
         self.engine = engine
         self.hub = hub
+        # Public IPs of THIS VPS (OBS_SENSOR_IPS, comma-separated). Suricata in
+        # host mode watches the sensor's own outbound traffic — honeypot
+        # responses and cowrie's malware fetches trip attack rules with
+        # src_ip = the sensor itself. Those alerts are noise, not attacks.
+        self.sensor_ips = frozenset(ip.strip() for ip in sensor_ips.split(",") if ip.strip())
         self.queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=queue_maxsize)
         self.dropped = 0
         self._buffer: list[Event] = []
@@ -69,6 +75,8 @@ class IngestPipeline:
         event = normalize(source, record)
         if event is None:
             return None
+        if event.honeypot == "suricata" and event.source_ip in self.sensor_ips:
+            return None  # the sensor's own outbound traffic is not an attack
         info = self.geoip.enrich(event.source_ip)
         event.country = info.country
         event.city = info.city

@@ -74,6 +74,8 @@ else
     sed -i "s|^OBS_SECRET_KEY=.*|OBS_SECRET_KEY=$(openssl rand -hex 32)|"  .env
     sed -i "s|^OBS_ADMIN_PASSWORD=.*|OBS_ADMIN_PASSWORD=$(openssl rand -hex 16)|" .env
     sed -i "s|^OBS_INGEST_API_KEY=.*|OBS_INGEST_API_KEY=$(openssl rand -hex 32)|"  .env
+    public_ip=$(curl -s --max-time 10 https://ifconfig.me || hostname -I | awk '{print $1}')
+    [ -n "$public_ip" ] && sed -i "s|^OBS_SENSOR_IPS=.*|OBS_SENSOR_IPS=$public_ip|" .env
     echo "generated .env with random secrets (file is gitignored — back it up)"
 fi
 
