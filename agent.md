@@ -247,6 +247,12 @@ Test files: `backend/tests/test_api.py`, `test_classify.py`, `test_normalize.py`
   DB-IP databases; a full suite once filled the 10GB disk that way.
 - `/network/stats` is windowed (default 7 days). The old 30-day signature
   GROUP BY took 30s+ on this box and stalled the whole /map page.
+- DISK GUARD: the 10GB disk filled twice (build cache + log rotations). A daily
+  cron (`/etc/cron.d/obs-disk-gc`, script `scripts/obs-disk-gc.sh`, installed
+  at `/usr/local/bin/obs-disk-gc.sh` on the VPS) prunes build cache, truncates
+  container logs >50MB, deletes rotated honeypot logs >3 days, and force-prunes
+  unused images above 90% usage. `/etc/docker/daemon.json` caps container logs
+  at 10m×3 — applies to containers created after it was added.
 - UI pages shipped: Overview (`/`), Live feed (`/live`), Attack map (`/map`),
   SSH (`/ssh`), Web (`/web`), Credentials (`/credentials`),
   Network (`/network`), IOC center (`/ioc`), Login (`/login`).
