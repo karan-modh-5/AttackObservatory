@@ -74,7 +74,43 @@ def _from_line(line: str) -> Event | None:
     )
 
 
+def _from_report(record: dict[str, Any]) -> Event | None:
+    """tanner_report.json lines (LOCALLOG format): nested detection verdict.
+
+    {"method": "GET", "path": "/index.php?id=1 UNION SELECT...",
+     "peer": {"ip": "..."}, "headers": {...},
+     "response_msg": {"response": {"message": {"detection": {"name": "sqli"}}}},
+     "timestamp": "..."}
+    """
+    detection = str(
+        record.get("response_msg", {})
+        .get("response", {})
+        .get("message", {})
+        .get("detection", {})
+        .get("name", "")
+    ).strip().lower()
+    # "index" is Tanner's name for the base page — plain browsing, not an attack.
+    if not detection or detection == "index":
+        return None
+    path = str(record.get("path", "")).strip()
+    headers = record.get("headers") or {}
+    source_ip = headers.get("x-forwarded-for") or (record.get("peer") or {}).get("ip")
+    if isinstance(source_ip, str):
+        source_ip = source_ip.split(",")[0].strip() or None
+    else:
+        source_ip = None
+    return build_event(
+        source="tanner",
+        service="http",
+        timestamp=record.get("timestamp"),
+        source_ip=source_ip,
+        payload=_payload(detection, path),
+    )
+
+
 def normalize_record(record: dict[str, Any]) -> Event | None:
+    if "response_msg" in record:
+        return _from_report(record)
     raw = record.get("log")
     if isinstance(raw, str):
         line = raw.strip()

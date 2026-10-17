@@ -16,7 +16,8 @@ RUN apk add --no-cache git build-base libffi-dev libressl-dev linux-headers pyth
     && /opt/tanner/tanner-env/bin/pip install --no-cache-dir -r /opt/tanner/requirements.txt \
     && cd /opt/tanner \
     && /opt/tanner/tanner-env/bin/python setup.py install \
-    && mkdir -p /opt/tanner/data /tmp/tanner/emulators /var/lib/tanner /var/log/honeypot/tanner
+    && mkdir -p /opt/tanner/data /tmp/tanner/emulators /var/lib/tanner /var/log/honeypot/tanner \
+    && rm -f /opt/tanner/db/GeoLite2-City.mmdb
 
 # TannerConfig reads /opt/tanner/data/config.yaml at import time and the CLI
 # takes --config /opt/tanner/tanner/data/config.yaml; keep both copies identical.
