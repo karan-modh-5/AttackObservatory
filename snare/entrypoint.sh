@@ -51,6 +51,13 @@ if [ ! -d "$PAGE_DIR" ]; then
     exit 1
 fi
 
+# snare drops to 'nobody' at runtime but does not clear the root supplementary
+# group (upstream drop_privileges bug). A page dir created with mode 0700/0707
+# (group permissions stripped) is then matched to the root group and denied, so
+# snare serves empty 200 bodies. Ensure the served page tree is readable and
+# traversable by group+others before snare starts. Idempotent across restarts.
+chmod -R a+rX "$PAGE_DIR"
+
 # Snare replays the cloned site's response headers from meta.json. Framing
 # headers must not be replayed: aiohttp applies its own Transfer-Encoding and
 # the stored Content-Length no longer matches the served (dork-processed) body.
