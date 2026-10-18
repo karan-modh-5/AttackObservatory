@@ -9,15 +9,13 @@
 #   1. Creates swap (the box cannot survive traffic bursts without it)
 #   2. Installs Docker Engine + compose plugin
 #   3. Generates .env with fresh random secrets (never committed to git)
-#   4. Builds the React frontend inside a throwaway node container
-#      (npm never installs on the host filesystem)
-#   5. Builds + starts the full stack: web, api, fluent-bit, cowrie, snare,
-#      tanner, heralding, suricata
-#   6. Waits for health and prints your dashboard URL + admin credentials
+#   4. Builds + starts the full stack: web, api, fluent-bit, cowrie, snare,
+#      tanner, heralding, suricata (the web image builds the React bundle in
+#      its own multi-stage build)
+#   5. Waits for health and prints your dashboard URL + admin credentials
 #
 # Usage (as root, from the repository root):
 #   bash install.sh                    # normal install
-#   bash install.sh --rebuild-frontend # force a fresh frontend build
 #
 # SSH-on-port-22 note: cowrie (the SSH honeypot) is mapped to host port 22 by
 # docker-compose.override.yml. If your sshd still listens on 22, the installer
@@ -25,9 +23,6 @@
 # cut over later (honeypot on 22 = the real bait).
 # =============================================================================
 set -euo pipefail
-
-REBUILD_FRONTEND=0
-[ "${1:-}" = "--rebuild-frontend" ] && REBUILD_FRONTEND=1
 
 cd "$(dirname "$0")"
 [ "$(id -u)" -eq 0 ] || { echo "ERROR: run as root (sudo bash install.sh)"; exit 1; }
@@ -37,7 +32,7 @@ step() { printf '\n\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*"; }
 
 # ---------------------------------------------------------------------------
-step "1/8 Swap (required: the stack OOMs without it on <=1GB RAM)"
+step "1/7 Swap (required: the stack OOMs without it on <=1GB RAM)"
 mem_mb=$(free -m | awk '/^Mem:/{print $2}')
 swap_mb=$(free -m | awk '/^Swap:/{print $2}')
 if [ "$swap_mb" -lt 512 ]; then
@@ -57,7 +52,7 @@ sysctl -q vm.swappiness=20
 systemctl disable --now update-notifier-download.timer 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
-step "2/8 Docker Engine + compose plugin"
+step "2/7 Docker Engine + compose plugin"
 if ! command -v docker >/dev/null 2>&1; then
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq docker.io docker-compose-v2 >/dev/null
@@ -66,7 +61,7 @@ systemctl enable --now docker >/dev/null 2>&1 || true
 docker compose version
 
 # ---------------------------------------------------------------------------
-step "3/8 .env with fresh secrets"
+step "3/7 .env with fresh secrets"
 if [ -f .env ]; then
     echo ".env already exists — keeping it (secrets unchanged)"
 else
@@ -80,7 +75,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-step "4/8 Port 22 check (SSH honeypot cutover)"
+step "4/7 Port 22 check (SSH honeypot cutover)"
 if ss -ltn 'sport = :22' | grep -q ':22'; then
     if grep -q ':22:2222' docker-compose.override.yml 2>/dev/null; then
         mv docker-compose.override.yml docker-compose.override.yml.disabled
@@ -95,26 +90,12 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-step "5/8 Frontend build (inside a throwaway node container)"
-if [ ! -f frontend/dist/index.html ] || [ "$REBUILD_FRONTEND" -eq 1 ]; then
-    docker run --rm \
-        -e NODE_OPTIONS=--max-old-space-size=1024 \
-        -v "$PWD/frontend":/app \
-        -w /app \
-        node:22-alpine \
-        sh -c "npm ci --no-audit --no-fund && npm run build"
-    echo "frontend/dist built"
-else
-    echo "frontend/dist exists — skipping (use --rebuild-frontend to force)"
-fi
-
-# ---------------------------------------------------------------------------
-step "6/8 Build + start the stack (8 services)"
+step "5/7 Build + start the stack (8 services)"
 docker compose build
 docker compose up -d
 
 # ---------------------------------------------------------------------------
-step "7/8 Waiting for the api to become healthy"
+step "6/7 Waiting for the api to become healthy"
 probe="http://127.0.0.1:8888/api/v1/health/ready"
 for i in $(seq 1 40); do
     body=$(curl -s --max-time 5 "$probe" || true)
@@ -124,7 +105,7 @@ for i in $(seq 1 40); do
 done
 
 # ---------------------------------------------------------------------------
-step "8/8 Firewall reminder (run only the ports you want public)"
+step "7/7 Firewall reminder (run only the ports you want public)"
 cat <<'EOF'
   ufw allow 8888/tcp    # dashboard + api
   ufw allow 80/tcp      # web honeypot

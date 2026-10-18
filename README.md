@@ -149,10 +149,23 @@ Everything else (api, fluent-bit, tanner) is internal-only; suricata listens on 
 ## Quickstart
 
 ```bash
-cp .env.example .env      # then set the three CHANGE_ME_* secrets
+# One-shot production install: generates .env secrets, builds the frontend
+# inside the web image, starts all 8 services, then prints your login.
+bash install.sh
+
+# Manual / local dev equivalent:
+cp .env.example .env
+sed -i "s/^OBS_SECRET_KEY=.*/OBS_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^OBS_ADMIN_PASSWORD=.*/OBS_ADMIN_PASSWORD=$(openssl rand -hex 32)/" .env
+sed -i "s/^OBS_INGEST_API_KEY=.*/OBS_INGEST_API_KEY=$(openssl rand -hex 32)/" .env
 docker compose up -d --build
-# dashboard: http://localhost:8888/  (login: OBS_ADMIN_USER / OBS_ADMIN_PASSWORD)
+# dashboard: http://localhost:8888/  (login: admin / the OBS_ADMIN_PASSWORD above)
 ```
+
+The API refuses to start on the `CHANGE_ME_*` placeholders, so a plain
+`cp .env.example .env` without setting real secrets fails loudly instead of
+serving a known password. The frontend bundle is built inside the web image's
+multi-stage build, so a fresh clone needs no pre-existing `frontend/dist/`.
 
 Full production walkthrough: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 Data model, API surface, and classification rules: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
