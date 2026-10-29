@@ -37,7 +37,7 @@ mem_mb=$(free -m | awk '/^Mem:/{print $2}')
 swap_mb=$(free -m | awk '/^Swap:/{print $2}')
 if [ "$swap_mb" -lt 512 ]; then
     warn "swap is ${swap_mb}MB — creating a 2GB swapfile"
-    fallocate -l 2G /swapfile
+    fallocate -l 1G /swapfile
     chmod 600 /swapfile
     mkswap /swapfile >/dev/null
     swapon /swapfile
